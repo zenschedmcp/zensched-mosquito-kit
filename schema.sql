@@ -16,11 +16,13 @@
 -- Every statement is idempotent (IF NOT EXISTS / INSERT OR IGNORE), so it is
 -- safe to run this file again on an existing database.
 --
--- NOT AN OFFICIAL FIFRA / PESTICIDE LOG. chemical_log is the owner's local
--- extract from the Fog Record (date, block, chemical, gallons, crew). It is
--- not a FIFRA Section 7 / 7 CFR 110 applicator report, not an EPA log, and
--- not a state department-of-agriculture use record. Licensed applicators
--- still keep whatever their state or country requires, on their own forms.
+-- NOT AN OFFICIAL FIFRA / FDACS / FORM H CHEMICAL LOG, AND NOT FIELDSEEKER
+-- ULV. chemical_log is the owner's local extract from the Fog Record (date,
+-- block, chemical, gallons, crew). It is not a FIFRA Section 7 / 7 CFR 110
+-- applicator report, not an EPA log, not a Florida 5E-13.040 record or
+-- FDACS-13652 filing, not a Malaysia Form H, and not a FieldSeeker ULV
+-- spray-path GIS. Licensed applicators still keep whatever their state or
+-- country requires, on their own forms.
 --
 -- DATA MODEL
 --   contracts → blocks (places) → fog_visits.
@@ -87,7 +89,8 @@ CREATE TABLE IF NOT EXISTS contracts (
 -- event_valid_until, the agent creates a new event and updates both columns.
 -- Cadence lives here so one municipal contract can fog Zone A Monday and
 -- Zone B Wednesday.
--- place_label is the ONLY name sent to ZenSched. access_notes is LOCAL ONLY.
+-- place_label is the ONLY name sent to ZenSched (block code + street,
+-- never the contract or a person). access_notes is LOCAL ONLY.
 CREATE TABLE IF NOT EXISTS blocks (
   block_id INTEGER PRIMARY KEY AUTOINCREMENT,
   contract_id INTEGER NOT NULL,
@@ -96,7 +99,7 @@ CREATE TABLE IF NOT EXISTS blocks (
   city TEXT,
   state TEXT,
   zip TEXT,
-  place_label TEXT,                                 -- sent to ZenSched: 'Block - Oak Loop'
+  place_label TEXT,                                 -- sent to ZenSched: 'Oak Loop - 1200 Oak Loop'
   access_notes TEXT,                                -- LOCAL ONLY: gate, residents-only, dogs
   acreage REAL,
   service_rate REAL,                                -- NULL = contracts.per_block_fee
@@ -369,9 +372,9 @@ WHERE i.paid = 0
 ORDER BY i.due_date;
 
 -- Owner's local chemical extract: one row per treated fog visit.
--- This is the owner's copy, not a FIFRA / 7 CFR 110 form and not a
--- state pesticide-use report. Visits where the crew marked chemical
--- "None" or gallons is 0 / NULL are omitted.
+-- This is the owner's copy, not a FIFRA / FDACS / Form H form, not a
+-- FieldSeeker ULV path, and not a state pesticide-use report. Visits
+-- where the crew marked chemical "None" or gallons is 0 / NULL are omitted.
 CREATE VIEW IF NOT EXISTS chemical_log AS
 SELECT
   v.visit_id,

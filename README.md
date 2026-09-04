@@ -12,7 +12,8 @@ If you *are* a developer, skip to [For developers](#for-developers).
 
 **What it is not:**
 
-- **Not an official FIFRA or pesticide-use log.** `chemical_log` is *your* copy of what the crew typed on the phone (date, block, chemical, gallons, tech). It is not a FIFRA Section 7 / 7 CFR 110 applicator report, not an EPA log, and not a substitute for whatever your department of agriculture or ministry of health requires you to keep. Florida FDACS, a Gulf municipality, and every Southeast Asian vector-control office still want *their* form. This kit does not produce it and does not claim you are compliant because you used it.
+- **Not an official FIFRA / FDACS / Form H chemical log.** `chemical_log` is *your* copy of what the crew typed on the phone (date, block, chemical, gallons, tech). It is not a FIFRA Section 7 / 7 CFR 110 applicator report, not an EPA log, not a Florida 5E-13.040 record or **FDACS-13652** monthly filing, not a Malaysia **Form H**, and not an NEA / DOH / municipality pesticide book. Florida FDACS, a Gulf municipality, and every Southeast Asian vector-control office still want *their* form. This kit does not produce it and does not claim you are compliant because you used it. Do not tell an FDACS, DOA, NEA, or municipality auditor "it's in ZenSched."
+- **Not FieldSeeker ULV.** The night's trail is an ordered sequence of geofenced punches at block pins. There is no nozzle-on breadcrumb, no restricted-area sprayer geofence, and no spray-path GIS. Keep FieldSeeker if that is the district chemical / GIS system of record.
 - **Not a spray-drift model or a larval-dip lab.** There is no wind/temperature log, no trap count, and no Bti dip record. The Fog Record is chemical + gallons + one photo.
 - **Not a signed legal document.** The Fog Record has no signature field. On ZenSched a signature field replaces the Submit button, so adding one would make every stop look like the crew (or the city) had signed something. Submitting the form is just submitting the form.
 
@@ -43,7 +44,7 @@ If any of those is a deal-breaker, this kit is not for you. If you want block ca
 
 ### Privacy note
 
-Gate codes, residents-only notes, and applicator license numbers are stored only in `blocks.access_notes` and `technicians.license_no` in the local database. `SKILL.md` forbids the AI from putting them into any ZenSched field. Give them to your crew yourself, by whatever channel you trust. ZenSched only ever sees the block label, the street address, and the GPS pin.
+Gate codes, residents-only notes, applicator license numbers, and contract / person names are stored only in the local database. `SKILL.md` forbids the AI from putting them into any ZenSched field. Location and event labels are **block code + street** (`Oak Loop - 1200 Oak Loop`), never the HOA, hotel, or a resident. Give gate codes to your crew yourself, by whatever channel you trust. ZenSched only ever sees the block label, the street address, and the GPS pin.
 
 ## How it works day to day
 
@@ -161,7 +162,7 @@ See `QUICKSTART.md` for the first-week walkthrough and `example-workflow.md` for
 
 ### What "invoice" means here
 
-"Draft an invoice" records the invoice in your database (number, date, due date, amount, which visits) and the AI writes out a plain-text invoice you can paste into an email or text message, with a line per block and a note that the visit was GPS-verified. It does **not** generate a PDF, email it for you, or collect payment. Invoices do not list chemicals, mix rates, or license numbers unless you ask. When the contract pays, tell the AI ("Palm Grove paid INV-2026-0001") and it marks it paid. If you outgrow this, the invoice records are simple enough to import into any accounting tool.
+"Draft an invoice" records the invoice in your database (number, date, due date, amount, which visits) and the AI writes out a plain-text invoice you can paste into an email or text message, with a line per block and a note that the visit was GPS-verified. It does **not** generate a PDF, email it for you, or collect payment. Invoices do not list chemicals, mix rates, or license numbers unless you ask. Each invoice footer says this is not an official FIFRA / FDACS / Form H pesticide log and not a FieldSeeker ULV trail. When the contract pays, tell the AI ("Palm Grove paid INV-2026-0001") and it marks it paid. If you outgrow this, the invoice records are simple enough to import into any accounting tool.
 
 ## Mobile app for technicians
 
@@ -179,14 +180,14 @@ When you invite a crew member, they get an email, install the app, and can immed
 | `SQLITE_PATH` points nowhere / "unable to open database" | Folder from step 1 does not exist | Create the folder; the file is created automatically but the folder is not |
 | ZenSched tools return an auth error | Key still says `zsc_your_key_here`, or was pasted with a space | Re-paste the key, restart |
 | `payment_required` | Metered call with no balance | Follow the instructions in the response; $5 deposit |
-| AI creates shifts at the wrong hour | Timezone not set, or you expected 8am instead of 20:00 | "Set my timezone offset to -04:00 in settings" (use your own offset). Night fog defaults to 20:00 |
+| AI creates shifts at the wrong hour | Timezone not set, stale Florida DST, or you expected 8am instead of 20:00 | "Set my timezone offset to -04:00 in settings" (Florida EDT mid-March–early November; EST `-05:00` otherwise). SE Asia / Gulf have **no DST** — do not flip `+08:00` / `+04:00` / `+03:00`. Night fog defaults to 20:00 |
 | Shift creation fails for dates a couple of months out | The block's 60-day ZenSched event has expired | Say "renew the events"; the AI runs the roll-over in `SKILL.md` and retries |
 | Crew's check-in not GPS-verified on a long block | Pin is at one end, truck is at the other, or radius is still the house default | Ask the AI to widen `checkin_radius_m` with `policy_update` (not on the location), or run `location_update` / `location_refine` ($0.10) |
-| Crew does not see the Fog Record | Form not assigned to that block's event | "Attach the Fog Record to Oak Loop's event" (`form_assign`) |
+| Crew does not see the Fog Record | Form not assigned to that block's event before the shift was created | "Attach the Fog Record to Oak Loop's event" (`form_assign(form_id, event_id=…)`); it installs on the existing shift — do not cancel and recreate. Recreating with the same `shift-block-{id}-{date}` key would only replay the cancelled shift for 24 hours |
 | "Chemical log" comes back empty | Visits not recorded yet, or the crew marked chemical None | "Record last night's fogs" first; None / zero-gallon rows are omitted on purpose |
 | AI asks you to run SQL yourself | It does not have `SKILL.md` loaded | Re-paste `SKILL.md` as project instructions |
 | AI refuses to put a gate code in ZenSched | Working as intended | Give it to the crew directly |
-| AI offers a FIFRA form or a state chemical report | It shouldn't | This kit does not produce those; use your official form |
+| AI offers a FIFRA / FDACS / Form H log or a FieldSeeker ULV path | It shouldn't | This kit does not produce those; file the official book in your binder or FieldSeeker |
 
 If something is confusing or broken in ZenSched itself, ask the AI to call `feedback_submit` with a description. It is free, needs no account, and a human reads every submission.
 
@@ -196,16 +197,16 @@ If something is confusing or broken in ZenSched itself, ask the AI to call `feed
 
 **Data model decisions.**
 
-- **`contracts` → `blocks` (places) → `fog_visits`.** A contract (city, HOA, resort, private) owns many blocks. Each block is one place: one ZenSched **location**, permanent, stored on `blocks.zensched_location_id` as an integer. Created with `location_create(name, street_address=..., checkin_radius_m=200, idempotency_key=...)`. `checkin_radius_m` on `location_create` is informational; the enforced radius is `policy_update(0, '{"checkin_radius_m": N}')`, and with geofencing on the platform raises values under 100 m to 300 ft. Fog trucks should set the policy to 200–300 m.
-- **Events are capped at 60 days by ZenSched**, so an event cannot be a permanent job template. Each block holds its *current* event in `blocks.zensched_event_id` and its last covered date in `blocks.event_valid_until`. The agent creates a new event (`event_create(location_id, title="Fog - <block_name>", start_date, end_date=start+59 days, idempotency_key="event-block-{block_id}-{YYYYMMDD}")`) whenever a shift date is later than `event_valid_until`, calls `form_assign(form_id, event_id=...)` on it, and updates the row. `blocks_due` exposes `event_needs_roll` per row and `events_expiring` lists blocks due for renewal within 14 days. Shifts already created on the old event remain valid. When recording a completed visit whose `event_id` no longer matches a block, the agent falls back to `event_get(event_id).location_id` against `blocks.zensched_location_id`.
+- **`contracts` → `blocks` (places) → `fog_visits`.** A contract (city, HOA, resort, private) owns many blocks. Each block is one place: one ZenSched **location**, permanent, stored on `blocks.zensched_location_id` as an integer. Created with `location_create(name="<block_name> - <street>", street_address=..., checkin_radius_m=200, idempotency_key=...)` — the label is block code + street, never the contract or a person. `checkin_radius_m` on `location_create` is informational; the enforced radius is `policy_update(0, '{"checkin_radius_m": N}')`, and with geofencing on the platform raises values under 100 m to 300 ft. Fog trucks should set the policy to 200–300 m.
+- **Events are capped at 60 days by ZenSched**, so an event cannot be a permanent job template. Each block holds its *current* event in `blocks.zensched_event_id` and its last covered date in `blocks.event_valid_until`. The agent creates a new event (`event_create(location_id, title="Fog - <block_name> - <street>", start_date, end_date=start+59 days, idempotency_key="event-block-{block_id}-{YYYYMMDD}")`) whenever a shift date is later than `event_valid_until`, calls `form_assign(form_id, event_id=...)` on it, and updates the row. `blocks_due` exposes `event_needs_roll` per row and `events_expiring` lists blocks due for renewal within 14 days. Shifts already created on the old event remain valid. When recording a completed visit whose `event_id` no longer matches a block, the agent falls back to `event_get(event_id).location_id` against `blocks.zensched_location_id`.
 - **Cadence is next-fog-date on the block, not the contract.** `blocks.service_frequency` is `weekly | biweekly | monthly | after_rain | on-demand`. One municipal contract can fog Zone A Monday and Zone B Wednesday. `blocks_due` is every active block with `next_fog_date <= today+7` joined to its active contract, emitting `start_iso` / `end_iso` (preferred start or `settings.default_shift_start` which is **20:00**, duration from `default_shift_minutes`) and the shift `idempotency_key`.
 - **The `advance_fog_date_on_visit` trigger** sets `last_fog_date` and `next_fog_date` on every visit insert: +7 / +14 / +1 month / **NULL** (after_rain and on-demand). Recording a one-off on a weekly block also moves the cadence; `SKILL.md` tells the agent to set the date back if the owner says so. "It rained" is an explicit `UPDATE blocks SET next_fog_date = ?` on an `after_rain` row.
 - Rate lives on the **block** (`service_rate`) with a fallback to `contracts.per_block_fee`. `fill_visit_amount` snapshots that onto `fog_visits.amount` when the agent leaves it NULL.
 - `fog_visits.zensched_shift_id` and `technicians.zensched_worker_id` are integer `UNIQUE`. `fog_visits.report_dc_id` holds the form `submission_id`. `chemical` is `CHECK`-constrained to the form's option labels.
 - `fill_visit_technician` sets `technician_id` from `zensched_worker_id` when the agent leaves it NULL.
 - `invoices.invoice_number` is auto-assigned by trigger as `{prefix}-{YYYY}-{0001}`.
-- **`chemical_log`** is a view over treated visits (omits `chemical` `None` and `gallons` 0 / NULL). One row per visit. It does not transmit anything and is not a FIFRA form.
-- `blocks.access_notes` and `technicians.license_no` are the columns that must never be sent to ZenSched; `SKILL.md` rule 6 enforces it. `blocks_due` still *selects* `access_notes` so the agent can tell the owner to pass them to the crew.
+- **`chemical_log`** is a view over treated visits (omits `chemical` `None` and `gallons` 0 / NULL). One row per visit. It does not transmit anything and is not a FIFRA / FDACS / Form H form or a FieldSeeker ULV path.
+- `blocks.access_notes`, `technicians.license_no`, and contract / person names are the columns that must never be sent to ZenSched; `SKILL.md` rule 6 enforces it. The location label is `<block_name> - <street>`. `blocks_due` still *selects* `access_notes` so the agent can tell the owner to pass them to the crew.
 - `PRAGMA foreign_keys = ON` is in `schema.sql` and `SKILL.md` tells the agent to run it per session; SQLite does not persist it.
 
 **Fog Record form.** Created once with `form_create(title, fields_json, idempotency_key="form-fog-record")`; the exact `fields_json` is in `SKILL.md` and `example-workflow.md` (byte-identical) and was validated against ZenSched's `_validate_fields`. Every field carries an explicit `identifier` so submission `data` keys are stable (`chemical`, `gallons`, `spray`; section `sec_fog`). Option keys are derived by ZenSched from the labels (lowercase, non-alphanumerics → `_`, truncated at 30 characters); every option here is well under 30 characters, so nothing truncates. **No `signature` field** — the phone keeps a Submit button, and submitting is not a legal attestation. Attaching is `form_assign(form_id, event_id=...)`.
@@ -215,12 +216,13 @@ If something is confusing or broken in ZenSched itself, ask the AI to call `feed
 - location: `loc-block-{block_id}`
 - event: `event-block-{block_id}-{YYYYMMDD window start}`
 - shift: `shift-block-{block_id}-{YYYYMMDD}`
+- form_assign: `assign-fog-record-{event_id}`
 - worker: `worker-{email}`
 - form: `form-fog-record`
 
-ZenSched caches idempotent responses for 24 hours.
+Same-night re-fog or a crew swap appends `-2`, then `-3`, and so on. Never reuse a cancelled shift's key (24-hour replay). ZenSched caches idempotent responses for 24 hours.
 
-**Timestamps.** `shift_create` takes `start` and `end` in ISO 8601 with an explicit offset. Always use the business's local offset from `settings.timezone_offset` (e.g. `2026-09-07T20:00:00-04:00`), never `Z`. The view builds these strings so the agent does not have to. Night fog defaults to 20:00.
+**Timestamps.** `shift_create` takes `start` and `end` in ISO 8601 with an explicit offset. Always use the business's local offset from `settings.timezone_offset` (e.g. `2026-09-07T20:00:00-04:00`), never `Z`. The view builds these strings so the agent does not have to. Night fog defaults to 20:00. Florida observes DST (`-04:00` mid-March to early November, `-05:00` otherwise). Southeast Asia and the Gulf do not — leave `+08:00` / `+07:00` / `+04:00` / `+03:00` alone year-round.
 
 **Metered reads.** `form_submissions` and `form_export` bill $0.05 per submission read ($0.15 with media); `form_export` is preferred for a week at a time. The kit stores the summary and media URLs on `fog_visits` on first read so later chemical-log questions are answered from SQLite. `shift_list`, `shift_status`, `event_get`, and `timesheet_export(mode="hours"|"raw")` are free.
 

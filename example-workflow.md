@@ -4,9 +4,9 @@ This shows the exact tool calls the agent makes for a first week of operation, f
 
 IDs and responses are illustrative. ZenSched IDs are integers.
 
-Shop: **GulfMist Mosquito**, Tampa, Florida, Eastern time (`-04:00` in September). One HOA (two weekly blocks) plus one after-rain resort block, one crew, then invoice.
+Shop: **GulfMist Mosquito**, Tampa, Florida, Eastern time (`-04:00` EDT in September; Florida flips to `-05:00` EST after the first Sunday of November). One HOA (two weekly blocks) plus one after-rain resort block, one crew, then invoice.
 
-Access notes (gate code) and any applicator license number stay in SQLite. They are never sent to ZenSched.
+Access notes (gate code), applicator license numbers, and contract / person names stay in SQLite. They are never sent to ZenSched. Location labels are block code + street.
 
 ## Session start (every session)
 
@@ -27,7 +27,7 @@ sqlite_execute: UPDATE settings SET value = 'GulfMist Mosquito' WHERE key = 'bus
 sqlite_execute: UPDATE settings SET value = '-04:00' WHERE key = 'timezone_offset';
 ```
 
-> Saved. I'll schedule everything in Eastern time (-04:00), default 20:00 night fog. You don't have a Fog Record form yet; it's free to create and every block will come back with chemical, gallons, and one spray photo. No signature — this is an internal visit record, not an official FIFRA or state pesticide log. Want me to set it up now?
+> Saved. I'll schedule everything in Eastern time (-04:00 EDT in September; Florida has DST, so I'll switch settings to -05:00 after the first Sunday of November). Default 20:00 night fog. You don't have a Fog Record form yet; it's free to create and every block will come back with chemical, gallons, and one spray photo. No signature — this is an internal visit record, not an official FIFRA / FDACS / Form H chemical log and not a FieldSeeker ULV path. Want me to set it up now?
 
 Owner: *"yes"*
 
@@ -41,7 +41,7 @@ form_create:
 ```json
 [
   {"type": "section", "label": "Fog record", "identifier": "sec_fog",
-   "text": "Fill this in before you leave the block. Photograph the spray. This is an internal fog-visit record, not an official FIFRA pesticide-use log and not a state applicator report."},
+   "text": "Fill this in before you leave the block. Photograph the spray. This is an internal fog-visit record, not an official FIFRA / FDACS / Form H chemical log, and not a FieldSeeker ULV spray path."},
   {"type": "select", "label": "Chemical", "identifier": "chemical", "required": true,
    "options": ["Permethrin", "Malathion", "Naled", "Pyrethrin", "Deltamethrin", "None"]},
   {"type": "number", "label": "Gallons", "identifier": "gallons", "required": true},
@@ -55,7 +55,7 @@ form_create:
 sqlite_execute: UPDATE settings SET value = '501' WHERE key = 'fog_record_form_id';
 ```
 
-> Fog Record form created. I'll attach it to every block automatically. There is no signature step. This is not an official FIFRA log.
+> Fog Record form created. I'll attach it to every block automatically. There is no signature step. This is not an official FIFRA / FDACS / Form H log and not FieldSeeker ULV.
 
 Optional, first time, for a truck driving the block:
 
@@ -81,7 +81,7 @@ sqlite_execute:
 sqlite_execute:
   INSERT INTO blocks (contract_id, block_name, address, city, state, zip, place_label,
                       access_notes, service_frequency, next_fog_date, preferred_start)
-  VALUES (1, 'Oak Loop', '1200 Oak Loop', 'Tampa', 'FL', '33609', 'Block - Oak Loop',
+  VALUES (1, 'Oak Loop', '1200 Oak Loop', 'Tampa', 'FL', '33609', 'Oak Loop - 1200 Oak Loop',
           'Gate 4412. Residents-only after 19:00.',
           'weekly', '2026-09-07', '20:00');
   → lastInsertRowid = 1
@@ -89,7 +89,7 @@ sqlite_execute:
 sqlite_execute:
   INSERT INTO blocks (contract_id, block_name, address, city, state, zip, place_label,
                       service_frequency, next_fog_date, preferred_start)
-  VALUES (1, 'Canal Court', '80 Canal Court', 'Tampa', 'FL', '33609', 'Block - Canal Court',
+  VALUES (1, 'Canal Court', '80 Canal Court', 'Tampa', 'FL', '33609', 'Canal Court - 80 Canal Court',
           'weekly', '2026-09-07', '20:20');
   → lastInsertRowid = 2
 ```
@@ -102,7 +102,7 @@ Owner: *"yes"*
 
 ```
 location_create:
-  name: "Block - Oak Loop"
+  name: "Oak Loop - 1200 Oak Loop"
   street_address: "1200 Oak Loop, Tampa, FL 33609"
   checkin_radius_m: 200
   idempotency_key: "loc-block-1"
@@ -110,7 +110,7 @@ location_create:
     billing: { meter: "geocode", units: 1, price: 0.03 }
 
 location_create:
-  name: "Block - Canal Court"
+  name: "Canal Court - 80 Canal Court"
   street_address: "80 Canal Court, Tampa, FL 33609"
   checkin_radius_m: 200
   idempotency_key: "loc-block-2"
@@ -122,7 +122,7 @@ The gate code is **not** in `notes`. It lives only in `blocks.access_notes`. `ch
 ```
 event_create:
   location_id: 9301
-  title: "Fog - Oak Loop"
+  title: "Fog - Oak Loop - 1200 Oak Loop"
   start_date: "2026-09-07"
   end_date:   "2026-11-05"          ← start + 59 days (60-day cap)
   idempotency_key: "event-block-1-20260907"
@@ -131,6 +131,7 @@ event_create:
 form_assign:
   form_id: 501
   event_id: 7301
+  idempotency_key: "assign-fog-record-7301"
   → status: "assigned", form_id: 501, event_id: 7301, policy_id: 0
 
 sqlite_execute:
@@ -139,13 +140,13 @@ sqlite_execute:
 
 event_create:
   location_id: 9302
-  title: "Fog - Canal Court"
+  title: "Fog - Canal Court - 80 Canal Court"
   start_date: "2026-09-07"
   end_date:   "2026-11-05"
   idempotency_key: "event-block-2-20260907"
   → event_id: 7302
 
-form_assign: form_id 501, event_id 7302
+form_assign: form_id 501, event_id 7302, idempotency_key "assign-fog-record-7302"
 
 sqlite_execute:
   UPDATE blocks SET zensched_location_id = 9302, zensched_event_id = 7302, event_valid_until = '2026-11-05'
@@ -168,12 +169,12 @@ sqlite_execute:
 sqlite_execute:
   INSERT INTO blocks (contract_id, block_name, address, city, state, zip, place_label,
                       service_rate, service_frequency, next_fog_date, preferred_start)
-  VALUES (2, 'Beach Road', 'Beach Road', 'Tampa', 'FL', '33615', 'Block - Beach Road',
+  VALUES (2, 'Beach Road', 'Beach Road', 'Tampa', 'FL', '33615', 'Beach Road - Beach Road',
           80.00, 'after_rain', '2026-09-10', '20:30');
   → lastInsertRowid = 3
 
 location_create:
-  name: "Block - Beach Road"
+  name: "Beach Road - Beach Road"
   street_address: "Beach Road, Tampa, FL 33615"
   checkin_radius_m: 200
   idempotency_key: "loc-block-3"
@@ -181,13 +182,13 @@ location_create:
 
 event_create:
   location_id: 9303
-  title: "Fog - Beach Road"
+  title: "Fog - Beach Road - Beach Road"
   start_date: "2026-09-10"
   end_date:   "2026-11-08"
   idempotency_key: "event-block-3-20260910"
   → event_id: 7303
 
-form_assign: form_id 501, event_id 7303
+form_assign: form_id 501, event_id 7303, idempotency_key "assign-fog-record-7303"
 
 sqlite_execute:
   UPDATE blocks SET zensched_location_id = 9303, zensched_event_id = 7303, event_valid_until = '2026-11-08'
@@ -316,13 +317,19 @@ form_export:
   → row_count: 3, rows: [
       { submission_id: 5501, worker_id: 701, event_id: 7301, submitted_at: "2026-09-07 20:14:08",
         data: { chemical: "permethrin", gallons: 2.5 },
-        media: [ { cdn_url: "https://cdn.zensched.com/m/.../oak.jpg" } ] },
+        media: [ { field_id: 3, cdn_url: "https://cdn.zensched.com/m/.../oak.jpg",
+                   thumbnail_url: "https://cdn.zensched.com/m/.../oak-t.jpg",
+                   original_filename: "oak.jpg" } ] },
       { submission_id: 5502, worker_id: 701, event_id: 7302, submitted_at: "2026-09-07 20:35:22",
         data: { chemical: "permethrin", gallons: 2.0 },
-        media: [ { cdn_url: "https://cdn.zensched.com/m/.../canal.jpg" } ] },
+        media: [ { field_id: 3, cdn_url: "https://cdn.zensched.com/m/.../canal.jpg",
+                   thumbnail_url: "https://cdn.zensched.com/m/.../canal-t.jpg",
+                   original_filename: "canal.jpg" } ] },
       { submission_id: 5503, worker_id: 701, event_id: 7303, submitted_at: "2026-09-10 20:46:01",
         data: { chemical: "permethrin", gallons: 3.0 },
-        media: [ { cdn_url: "https://cdn.zensched.com/m/.../beach.jpg" } ] }
+        media: [ { field_id: 3, cdn_url: "https://cdn.zensched.com/m/.../beach.jpg",
+                   thumbnail_url: "https://cdn.zensched.com/m/.../beach-t.jpg",
+                   original_filename: "beach.jpg" } ] }
     ]
     billing: { meter: "form_media", units: 3, price: 0.45 }
 
@@ -384,7 +391,7 @@ sqlite_query: SELECT * FROM chemical_log WHERE fog_date BETWEEN '2026-09-07' AND
     2026-09-07 | Oak Loop    | Palm Grove HOA    | Permethrin | 2.5 | Farid Hassan
 ```
 
-> Your copy from the Fog Record — not an official FIFRA or state pesticide log:
+> Your copy from the Fog Record — not an official FIFRA / FDACS / Form H chemical log and not a FieldSeeker ULV path:
 >
 > | Date | Block | Chemical | Gallons | Crew |
 > |---|---|---|---|---|
@@ -392,7 +399,7 @@ sqlite_query: SELECT * FROM chemical_log WHERE fog_date BETWEEN '2026-09-07' AND
 > | Sep 7 | Canal Court | Permethrin | 2.0 | Farid Hassan |
 > | Sep 10 | Beach Road | Permethrin | 3.0 | Farid Hassan |
 >
-> Keep whatever FDACS (or your ministry) wants on their form separately.
+> Keep whatever FDACS, Form H, or your ministry wants on their form separately. This is not a FieldSeeker ULV trail.
 
 ## "Draft invoices for everyone with uninvoiced work."
 
@@ -435,6 +442,7 @@ The agent then writes the invoices out as text:
 >
 > Total due: $90.00
 > Visits GPS-verified on the block.
+> Not an official FIFRA / FDACS / Form H pesticide log and not a FieldSeeker ULV trail.
 > ```
 >
 > ```
@@ -447,6 +455,7 @@ The agent then writes the invoices out as text:
 >
 > Total due: $80.00
 > Visit GPS-verified on the block.
+> Not an official FIFRA / FDACS / Form H pesticide log and not a FieldSeeker ULV trail.
 > ```
 >
 > Say "sent" when they're out and I'll note the date.
@@ -466,22 +475,25 @@ sqlite_execute: UPDATE invoices SET paid = 1, paid_date = date('now') WHERE invo
 sqlite_query: SELECT * FROM blocks_due;
   → 2026-11-09 | Oak Loop | weekly | evt 7301 | event_valid_until 2026-11-05 | event_needs_roll 1 | ...
 
+sqlite_execute: UPDATE settings SET value = '-05:00' WHERE key = 'timezone_offset';
+  -- Florida DST ended 2026-11-01; November nights are EST
+
 event_create:
   location_id: 9301
-  title: "Fog - Oak Loop"
+  title: "Fog - Oak Loop - 1200 Oak Loop"
   start_date: "2026-11-09"
   end_date:   "2027-01-07"
   idempotency_key: "event-block-1-20261109"
   → event_id: 7401
 
-form_assign: form_id 501, event_id 7401
+form_assign: form_id 501, event_id 7401, idempotency_key "assign-fog-record-7401"
 sqlite_execute: UPDATE blocks SET zensched_event_id = 7401, event_valid_until = '2027-01-07' WHERE block_id = 1;
 
 shift_create: event_id 7401, worker_id 701, start "2026-11-09T20:00:00-05:00",
               end "2026-11-09T20:20:00-05:00", idempotency_key "shift-block-1-20261109"
 ```
 
-> Scheduled Oak Loop for Mon Nov 9 20:00. Its ZenSched event was about to expire (Nov 5), so I renewed it through Jan 7. Beach Road has no next date (after-rain) so it is not on this week's list.
+> Scheduled Oak Loop for Mon Nov 9 20:00 EST (-05:00 — Florida DST ended Nov 1; I updated settings so the view does not keep -04:00). Its ZenSched event was about to expire (Nov 5), so I renewed it through Jan 7. Beach Road has no next date (after-rain) so it is not on this week's list. A Johor or Dubai shop would have left their offset alone.
 
 ## Summary of who stored what
 
